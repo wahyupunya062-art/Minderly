@@ -466,7 +466,8 @@ a:hover {
                 </div>
 
                 <div class="form-options">
-                    <a href="#" onclick="return false;">
+                   <a href="{{ route('password.request') }}"
+                    class="text-sm font-medium text-blue-700 hover:underline">
                         Lupa password?
                     </a>
                 </div>

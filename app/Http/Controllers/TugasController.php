@@ -13,29 +13,45 @@ class TugasController extends Controller
     public function index(Request $request)
     {
         // Statistik seluruh tugas, tidak terpengaruh pencarian atau filter.
-        $totalTugas = Tugas::count();
+        $totalTugas = Tugas::where(
+            'id_pengguna',
+            auth()->user()->id_pengguna
+        )->count();
 
-        $tugasAktif = Tugas::whereIn('status', [
+       $tugasAktif = Tugas::where(
+            'id_pengguna',
+            auth()->user()->id_pengguna
+        )->whereIn('status', [
             'Belum Mulai',
             'Sedang Dikerjakan',
         ])->count();
 
-        $tugasSelesai = Tugas::where('status', 'Selesai')->count();
+      $tugasSelesai = Tugas::where(
+            'id_pengguna',
+            auth()->user()->id_pengguna
+        )->where('status', 'Selesai')->count();
 
         // Prioritas tinggi: skor >= 80 atau deadline terlewat,
         // selama tugas belum selesai.
-        $prioritasTinggi = Tugas::where('status', '!=', 'Selesai')
-            ->where(function ($q) {
-                $q->where('skor_prioritas', '>=', 80)
-                    ->orWhere(function ($sub) {
-                        $sub->whereNotNull('deadline')
-                            ->whereDate('deadline', '<', today());
-                    });
-            })
-            ->count();
+                    $prioritasTinggi = Tugas::where(
+                'id_pengguna',
+                auth()->user()->id_pengguna
+            )
+                ->where('status', '!=', 'Selesai')
+                ->where(function ($q) {
+                    $q->where('skor_prioritas', '>=', 80)
+                        ->orWhere(function ($sub) {
+                            $sub->whereNotNull('deadline')
+                                ->whereDate('deadline', '<', today());
+                        });
+                })
+    ->count();
 
         // Query daftar tugas.
-        $query = Tugas::query();
+        $query = Tugas::where(
+            'id_pengguna',
+            auth()->user()->id_pengguna
+        );
 
         
       
@@ -215,7 +231,7 @@ class TugasController extends Controller
         );
 
         Tugas::create([
-            'id_pengguna' => 1,
+            'id_pengguna' => auth()->user()->id_pengguna,
             'id_kategori' => $request->id_kategori,
             'penanggung_jawab' => $penanggungJawab,
             'judul' => $request->judul,
@@ -233,7 +249,10 @@ class TugasController extends Controller
 
     public function edit($id)
     {
-        $tugas = Tugas::findOrFail($id);
+                $tugas = Tugas::where(
+            'id_pengguna',
+            auth()->user()->id_pengguna
+        )->findOrFail($id);
         $kategori = Kategori::orderBy('nama_kategori')->get();
 
         return view('tugas.edit', compact('tugas', 'kategori'));
@@ -255,7 +274,10 @@ class TugasController extends Controller
             'status' => 'required|in:Belum Mulai,Sedang Dikerjakan,Selesai',
         ]);
 
-        $tugas = Tugas::findOrFail($id);
+       $tugas = Tugas::where(
+            'id_pengguna',
+            auth()->user()->id_pengguna
+        )->findOrFail($id);
         $kategori = Kategori::findOrFail($request->id_kategori);
 
         // Penanggung jawab hanya disimpan untuk kategori Kelompok.
@@ -289,7 +311,10 @@ class TugasController extends Controller
 
     public function destroy($id)
     {
-        Tugas::findOrFail($id)->delete();
+        Tugas::where(
+            'id_pengguna',
+            auth()->user()->id_pengguna
+        )->findOrFail($id)->delete();
 
         return redirect('/tugas')
             ->with('success', 'Tugas berhasil dihapus');

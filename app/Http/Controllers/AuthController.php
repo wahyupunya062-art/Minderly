@@ -6,6 +6,10 @@ use App\Models\Pengguna;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -94,6 +98,80 @@ class AuthController extends Controller
 
         return $this->arahkanSetelahLogin();
     }
+    
+public function showForgotPassword()
+{
+    return view('Auth.forgot-password');
+}
+
+public function sendResetLink(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email',
+    ]);
+
+    $status = Password::sendResetLink(
+        $request->only('email')
+    );
+    Log::info('Hasil permintaan reset password Minderly', [
+    'status' => $status,
+    ]);
+
+    if ($status === Password::ResetLinkSent) {
+        return back()->with(
+            'status',
+            'Jika email terdaftar, tautan reset password akan dikirim ke email tersebut.'
+        );
+    }
+
+    return back()->withErrors([
+        'email' => 'Tautan belum dapat dikirim. Periksa email atau coba lagi nanti.',
+    ]);
+}
+
+public function showResetPassword(Request $request, string $token)
+{
+    return view('Auth.reset-password', [
+        'token' => $token,
+        'email' => $request->query('email'),
+    ]);
+}
+
+public function resetPassword(Request $request)
+{
+    $request->validate([
+        'token' => 'required',
+        'email' => 'required|email',
+        'password' => 'required|string|min:8|confirmed',
+    ]);
+
+    $status = Password::reset(
+        $request->only(
+            'email',
+            'password',
+            'password_confirmation',
+            'token'
+        ),
+        function (Pengguna $user, string $password) {
+           $user->forceFill([
+                'password' => Hash::make($password),
+            ])->setRememberToken(Str::random(60));
+
+            $user->save();
+            event(new PasswordReset($user));
+        }
+    );
+
+    if ($status === Password::PasswordReset) {
+        return redirect()->route('login')
+            ->with('status', 'Password berhasil diubah. Silakan login.');
+    }
+
+    return back()->withErrors([
+        'email' => 'Tautan reset tidak valid atau sudah kedaluwarsa. Silakan minta tautan baru.',
+    ]);
+}
+
 
     /**
      * Memeriksa apakah pengguna sudah mengisi kuesioner.
